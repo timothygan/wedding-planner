@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useReminders, useCreateReminder, useDeleteReminder } from '../hooks/useReminders';
+import { useReminders, useCreateReminder, useUpdateReminder, useDeleteReminder } from '../hooks/useReminders';
 import { useTasks } from '../hooks/useTasks';
 import { useVendors } from '../hooks/useVendors';
 import { useDueReminders } from '../hooks/useDueReminders';
@@ -13,9 +13,11 @@ export default function RemindersPage() {
   const { data: tasks } = useTasks();
   const { data: vendors } = useVendors();
   const { mutate: createReminder } = useCreateReminder();
+  const { mutate: updateReminder } = useUpdateReminder();
   const { mutate: deleteReminder } = useDeleteReminder();
   const { isSupported: pushSupported, permission, requestPermission, showNotification } = usePushNotifications();
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [validationError, setValidationError] = useState<string>('');
   const [userEmail, setUserEmail] = useState<string>('');
   const [formData, setFormData] = useState({
@@ -57,12 +59,25 @@ export default function RemindersPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-red-600">
+        <div className="text-cinnabar">
           Error loading reminders: {error instanceof Error ? error.message : 'Unknown error'}
         </div>
       </div>
     );
   }
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      message: '',
+      reminder_type: 'follow_up',
+      remind_at: '',
+      recurrence: 'none',
+      notification_channels: ['browser'],
+      task_id: '',
+      vendor_id: '',
+    });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,59 +102,107 @@ export default function RemindersPage() {
       return;
     }
 
-    createReminder(
-      {
-        title: formData.title,
-        message: formData.message?.trim() || undefined,
-        reminder_type: formData.reminder_type,
-        remind_at: remindAtISO,
-        recurrence: formData.recurrence || undefined,
-        notification_channels: formData.notification_channels,
-        task_id: formData.task_id || undefined,
-        vendor_id: formData.vendor_id || undefined,
-      },
-      {
+    const reminderData = {
+      title: formData.title,
+      message: formData.message?.trim() || undefined,
+      reminder_type: formData.reminder_type,
+      remind_at: remindAtISO,
+      recurrence: formData.recurrence || undefined,
+      notification_channels: formData.notification_channels,
+      task_id: formData.task_id || undefined,
+      vendor_id: formData.vendor_id || undefined,
+    };
+
+    if (editingReminder) {
+      updateReminder(
+        {
+          id: editingReminder.id,
+          data: reminderData,
+        },
+        {
+          onSuccess: () => {
+            setEditingReminder(null);
+            setValidationError('');
+            resetForm();
+          },
+        }
+      );
+    } else {
+      createReminder(reminderData, {
         onSuccess: () => {
           setShowCreateForm(false);
           setValidationError('');
-          setFormData({
-            title: '',
-            message: '',
-            reminder_type: 'follow_up',
-            remind_at: '',
-            recurrence: 'none',
-            notification_channels: ['browser'],
-            task_id: '',
-            vendor_id: '',
-          });
+          resetForm();
         },
+      });
+    }
+  };
+
+  const handleEdit = (reminder: Reminder) => {
+    setEditingReminder(reminder);
+    setShowCreateForm(false);
+    setValidationError('');
+    
+    // Parse notification_channels from JSON string
+    let notificationChannels: string[] = ['browser'];
+    try {
+      if (reminder.notification_channels) {
+        const parsed = JSON.parse(reminder.notification_channels);
+        if (Array.isArray(parsed)) {
+          notificationChannels = parsed;
+        }
       }
-    );
+    } catch (e) {
+      // Default to browser if parsing fails
+    }
+
+    // Convert ISO date to datetime-local format
+    const remindAt = reminder.remind_at
+      ? new Date(reminder.remind_at).toISOString().slice(0, 16)
+      : '';
+
+    setFormData({
+      title: reminder.title,
+      message: reminder.message || '',
+      reminder_type: reminder.reminder_type,
+      remind_at: remindAt,
+      recurrence: reminder.recurrence,
+      notification_channels: notificationChannels,
+      task_id: reminder.task_id || '',
+      vendor_id: reminder.vendor_id || '',
+    });
+  };
+
+  const handleCancel = () => {
+    setEditingReminder(null);
+    setShowCreateForm(false);
+    setValidationError('');
+    resetForm();
   };
 
   const getStatusColor = (status: ReminderStatus) => {
     switch (status) {
       case 'sent':
-        return 'bg-green-100 text-green-800';
+        return 'bg-forest-moss bg-opacity-20 text-forest-moss';
       case 'dismissed':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-old-gold bg-opacity-10 text-forest-moss';
       case 'snoozed':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-old-gold bg-opacity-30 text-graphite';
       default:
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-old-gold bg-opacity-20 text-forest-moss';
     }
   };
 
   const getTypeColor = (type: ReminderType) => {
     switch (type) {
       case 'payment_due':
-        return 'bg-red-100 text-red-800';
+        return 'bg-cinnabar bg-opacity-20 text-cinnabar';
       case 'deadline':
-        return 'bg-orange-100 text-orange-800';
+        return 'bg-old-gold bg-opacity-40 text-graphite';
       case 'meeting':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-forest-moss bg-opacity-20 text-forest-moss';
       default:
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-old-gold bg-opacity-20 text-forest-moss';
     }
   };
 
@@ -154,21 +217,21 @@ export default function RemindersPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Reminders</h1>
-          <p className="text-gray-600">Manage your wedding planning reminders</p>
+          <h1 className="text-3xl font-bold mb-2 text-graphite">Reminders</h1>
+          <p className="text-graphite">Manage your wedding planning reminders</p>
         </div>
         <div className="flex gap-2">
           {pushSupported && permission !== 'granted' && (
             <button
               onClick={requestPermission}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              className="px-4 py-2 bg-old-gold bg-opacity-20 text-graphite rounded-lg hover:bg-opacity-30 transition-all duration-300 border border-old-gold"
             >
               Enable Notifications
             </button>
           )}
           <button
             onClick={() => setShowCreateForm(!showCreateForm)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-cinnabar text-ivory rounded-lg hover:opacity-90 transition-all duration-300 shadow-md"
           >
             {showCreateForm ? 'Cancel' : '+ New Reminder'}
           </button>
@@ -177,11 +240,11 @@ export default function RemindersPage() {
 
       {/* Notification Settings */}
       {pushSupported && (
-        <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+        <div className="mb-6 p-4 bg-old-gold bg-opacity-10 border border-old-gold rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-blue-900">Push Notifications</h3>
-              <p className="text-sm text-blue-700">
+              <h3 className="font-semibold text-graphite">Push Notifications</h3>
+              <p className="text-sm text-forest-moss">
                 {permission === 'granted'
                   ? '✓ Browser notifications enabled'
                   : permission === 'denied'
@@ -192,14 +255,14 @@ export default function RemindersPage() {
             {permission !== 'granted' && (
               <button
                 onClick={requestPermission}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 bg-forest-moss text-ivory rounded-lg hover:opacity-90 transition-all duration-300"
               >
                 Enable
               </button>
             )}
           </div>
           <div className="mt-3">
-            <label className="block text-sm font-medium text-blue-900 mb-1">
+            <label className="block text-sm font-medium text-graphite mb-1">
               Email for email notifications (optional)
             </label>
             <input
@@ -207,18 +270,20 @@ export default function RemindersPage() {
               value={userEmail}
               onChange={(e) => setUserEmail(e.target.value)}
               placeholder="your@email.com"
-              className="w-full max-w-md px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full max-w-md px-3 py-2 bg-ivory border border-old-gold rounded-lg text-graphite placeholder-forest-moss focus:outline-none focus:ring-2 focus:ring-forest-moss focus:border-forest-moss transition-all"
             />
           </div>
         </div>
       )}
 
-      {showCreateForm && (
-        <div className="mb-8 bg-white border rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">Create New Reminder</h2>
+      {(showCreateForm || editingReminder) && (
+        <div className="mb-8 bg-ivory border border-old-gold rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4 text-graphite">
+            {editingReminder ? 'Edit Reminder' : 'Create New Reminder'}
+          </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-graphite mb-1">
                 Title *
               </label>
               <input
@@ -226,25 +291,25 @@ export default function RemindersPage() {
                 required
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-ivory border border-old-gold rounded-lg text-graphite placeholder-forest-moss focus:outline-none focus:ring-2 focus:ring-forest-moss focus:border-forest-moss transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-graphite mb-1">
                 Message
               </label>
               <textarea
                 value={formData.message}
                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-ivory border border-old-gold rounded-lg text-graphite placeholder-forest-moss focus:outline-none focus:ring-2 focus:ring-forest-moss focus:border-forest-moss transition-all resize-none"
                 rows={3}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-graphite mb-1">
                   Reminder Type *
                 </label>
                 <select
@@ -253,7 +318,7 @@ export default function RemindersPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, reminder_type: e.target.value as ReminderType })
                   }
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-ivory border border-old-gold rounded-lg text-graphite focus:outline-none focus:ring-2 focus:ring-forest-moss focus:border-forest-moss transition-all"
                 >
                   <option value="follow_up">Follow Up</option>
                   <option value="payment_due">Payment Due</option>
@@ -264,7 +329,7 @@ export default function RemindersPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-graphite mb-1">
                   Remind At *
                 </label>
                 <input
@@ -272,14 +337,14 @@ export default function RemindersPage() {
                   required
                   value={formData.remind_at}
                   onChange={(e) => setFormData({ ...formData, remind_at: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-ivory border border-old-gold rounded-lg text-graphite focus:outline-none focus:ring-2 focus:ring-forest-moss focus:border-forest-moss transition-all"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-graphite mb-1">
                   Recurrence
                 </label>
                 <select
@@ -287,7 +352,7 @@ export default function RemindersPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, recurrence: e.target.value as Recurrence })
                   }
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-ivory border border-old-gold rounded-lg text-graphite focus:outline-none focus:ring-2 focus:ring-forest-moss focus:border-forest-moss transition-all"
                 >
                   <option value="none">None (one-time reminder)</option>
                   <option value="daily">Daily</option>
@@ -295,14 +360,14 @@ export default function RemindersPage() {
                   <option value="monthly">Monthly</option>
                 </select>
                 {formData.recurrence !== 'none' && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-forest-moss mt-1">
                     This reminder will automatically repeat {formData.recurrence} after each occurrence.
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-graphite mb-1">
                   Notification Channels *
                 </label>
                 <div className="space-y-2">
@@ -357,7 +422,7 @@ export default function RemindersPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-graphite mb-2">
                 Associate with *
               </label>
               <select
@@ -379,7 +444,7 @@ export default function RemindersPage() {
                   }
                   setValidationError('');
                 }}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-ivory border border-old-gold rounded-lg text-graphite focus:outline-none focus:ring-2 focus:ring-forest-moss focus:border-forest-moss transition-all"
               >
                 <option value="">Select a task or vendor...</option>
                 {tasks && tasks.length > 0 && (
@@ -402,19 +467,28 @@ export default function RemindersPage() {
                 )}
               </select>
               {validationError && (
-                <div className="text-red-600 text-sm mt-2">{validationError}</div>
+                <div className="text-cinnabar text-sm mt-2">{validationError}</div>
               )}
-              <div className="text-sm text-gray-500 mt-2">
+              <div className="text-sm text-forest-moss mt-2">
                 Select a task or vendor to associate this reminder with.
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Create Reminder
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="flex-1 px-4 py-2 bg-cinnabar text-ivory rounded-lg hover:opacity-90 transition-all duration-300 shadow-md"
+              >
+                {editingReminder ? 'Update Reminder' : 'Create Reminder'}
+              </button>
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="px-4 py-2 bg-old-gold bg-opacity-20 text-graphite rounded-lg hover:bg-opacity-30 transition-all duration-300 border border-old-gold"
+              >
+                Cancel
+              </button>
+            </div>
           </form>
         </div>
       )}
@@ -422,18 +496,18 @@ export default function RemindersPage() {
       {/* Upcoming Reminders */}
       {upcomingReminders && upcomingReminders.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Upcoming</h2>
+          <h2 className="text-xl font-semibold mb-4 text-graphite">Upcoming</h2>
           <div className="space-y-4">
             {upcomingReminders.map((reminder) => (
               <div
                 key={reminder.id}
-                className="border rounded-lg p-4 bg-white hover:shadow-md transition-shadow"
+                className="border border-old-gold rounded-lg p-4 bg-ivory hover:shadow-md transition-shadow"
               >
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-lg">{reminder.title}</h3>
+                    <h3 className="font-semibold text-lg text-graphite">{reminder.title}</h3>
                     {reminder.message && (
-                      <p className="text-gray-600 text-sm mt-1">{reminder.message}</p>
+                      <p className="text-forest-moss text-sm mt-1">{reminder.message}</p>
                     )}
                   </div>
                   <div className="flex gap-2">
@@ -454,10 +528,10 @@ export default function RemindersPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 text-sm text-gray-600 mt-2">
+                <div className="flex flex-wrap gap-2 text-sm text-forest-moss mt-2">
                   <span>⏰ {new Date(reminder.remind_at).toLocaleString()}</span>
                   {reminder.recurrence !== 'none' && (
-                    <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
+                    <span className="px-2 py-1 bg-old-gold bg-opacity-20 text-forest-moss rounded text-xs font-medium border border-old-gold">
                       🔄 Recurring: {reminder.recurrence}
                     </span>
                   )}
@@ -479,8 +553,14 @@ export default function RemindersPage() {
 
                 <div className="mt-4 flex gap-2">
                   <button
+                    onClick={() => handleEdit(reminder)}
+                    className="px-3 py-1 text-sm bg-old-gold bg-opacity-20 text-graphite rounded hover:bg-opacity-30 transition-all border border-old-gold"
+                  >
+                    Edit
+                  </button>
+                  <button
                     onClick={() => deleteReminder(reminder.id)}
-                    className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+                    className="px-3 py-1 text-sm bg-cinnabar text-ivory rounded hover:opacity-90 transition-all shadow-sm"
                   >
                     Delete
                   </button>
@@ -494,18 +574,18 @@ export default function RemindersPage() {
       {/* Past/Due Reminders */}
       {pastReminders && pastReminders.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Due / Past</h2>
+          <h2 className="text-xl font-semibold mb-4 text-graphite">Due / Past</h2>
           <div className="space-y-4">
             {pastReminders.map((reminder) => (
               <div
                 key={reminder.id}
-                className="border rounded-lg p-4 bg-white hover:shadow-md transition-shadow opacity-75"
+                className="border border-old-gold rounded-lg p-4 bg-ivory hover:shadow-md transition-shadow opacity-75"
               >
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-lg">{reminder.title}</h3>
+                    <h3 className="font-semibold text-lg text-graphite">{reminder.title}</h3>
                     {reminder.message && (
-                      <p className="text-gray-600 text-sm mt-1">{reminder.message}</p>
+                      <p className="text-forest-moss text-sm mt-1">{reminder.message}</p>
                     )}
                   </div>
                   <div className="flex gap-2">
@@ -526,10 +606,10 @@ export default function RemindersPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 text-sm text-gray-600 mt-2">
+                <div className="flex flex-wrap gap-2 text-sm text-forest-moss mt-2">
                   <span>⏰ {new Date(reminder.remind_at).toLocaleString()}</span>
                   {reminder.recurrence !== 'none' && (
-                    <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
+                    <span className="px-2 py-1 bg-old-gold bg-opacity-20 text-forest-moss rounded text-xs font-medium border border-old-gold">
                       🔄 Recurring: {reminder.recurrence}
                     </span>
                   )}
@@ -537,8 +617,14 @@ export default function RemindersPage() {
 
                 <div className="mt-4 flex gap-2">
                   <button
+                    onClick={() => handleEdit(reminder)}
+                    className="px-3 py-1 text-sm bg-old-gold bg-opacity-20 text-graphite rounded hover:bg-opacity-30 transition-all border border-old-gold"
+                  >
+                    Edit
+                  </button>
+                  <button
                     onClick={() => deleteReminder(reminder.id)}
-                    className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+                    className="px-3 py-1 text-sm bg-cinnabar text-ivory rounded hover:opacity-90 transition-all shadow-sm"
                   >
                     Delete
                   </button>
@@ -550,9 +636,9 @@ export default function RemindersPage() {
       )}
 
       {reminders && reminders.length === 0 && (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-500 text-lg mb-4">No reminders yet</p>
-          <p className="text-gray-400">Create your first reminder to get started!</p>
+        <div className="text-center py-12 bg-ivory border border-old-gold rounded-lg">
+          <p className="text-graphite text-lg mb-4">No reminders yet</p>
+          <p className="text-forest-moss">Create your first reminder to get started!</p>
         </div>
       )}
     </div>

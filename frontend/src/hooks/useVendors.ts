@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { vendorApi } from '../services/api';
 import type { Vendor, CreateVendorRequest, UpdateVendorRequest } from '../types/vendor';
 
@@ -6,6 +6,7 @@ export function useVendors(category?: string, status?: string, search?: string) 
   return useQuery({
     queryKey: ['vendors', category, status, search],
     queryFn: () => vendorApi.getAll(category, status, search),
+    placeholderData: keepPreviousData,
   });
 }
 
