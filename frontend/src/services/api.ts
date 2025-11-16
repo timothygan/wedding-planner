@@ -1,5 +1,8 @@
 import axios from 'axios';
 import type { Vendor, CreateVendorRequest, UpdateVendorRequest } from '../types/vendor';
+import type { Task, CreateTaskRequest, UpdateTaskRequest } from '../types/task';
+import type { Reminder, CreateReminderRequest, UpdateReminderRequest } from '../types/reminder';
+import type { BudgetItem, CreateBudgetItemRequest, UpdateBudgetItemRequest } from '../types/budget';
 
 // Create axios instance with base configuration
 const api = axios.create({
@@ -11,9 +14,15 @@ const api = axios.create({
 
 // Vendor API endpoints
 export const vendorApi = {
-  // Get all vendors
-  getAll: async (): Promise<Vendor[]> => {
-    const response = await api.get<Vendor[]>('/vendors');
+  // Get all vendors with optional filters
+  getAll: async (category?: string, status?: string, search?: string): Promise<Vendor[]> => {
+    const params = new URLSearchParams();
+    if (category) params.append('category', category);
+    if (status) params.append('status', status);
+    if (search) params.append('search', search);
+    const queryString = params.toString();
+    const url = queryString ? `/vendors?${queryString}` : '/vendors';
+    const response = await api.get<Vendor[]>(url);
     return response.data;
   },
 
@@ -38,6 +47,75 @@ export const vendorApi = {
   // Delete vendor
   delete: async (id: string): Promise<void> => {
     await api.delete(`/vendors/${id}`);
+  },
+};
+
+// Task API endpoints
+export const taskApi = {
+  getAll: async (): Promise<Task[]> => {
+    const response = await api.get<Task[]>('/tasks');
+    return response.data;
+  },
+  getById: async (id: string): Promise<Task> => {
+    const response = await api.get<Task>(`/tasks/${id}`);
+    return response.data;
+  },
+  create: async (data: CreateTaskRequest): Promise<Task> => {
+    const response = await api.post<Task>('/tasks', data);
+    return response.data;
+  },
+  update: async (id: string, data: UpdateTaskRequest): Promise<Task> => {
+    const response = await api.put<Task>(`/tasks/${id}`, data);
+    return response.data;
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/tasks/${id}`);
+  },
+};
+
+// Reminder API endpoints
+export const reminderApi = {
+  getAll: async (): Promise<Reminder[]> => {
+    const response = await api.get<Reminder[]>('/reminders');
+    return response.data;
+  },
+  getById: async (id: string): Promise<Reminder> => {
+    const response = await api.get<Reminder>(`/reminders/${id}`);
+    return response.data;
+  },
+  create: async (data: CreateReminderRequest): Promise<Reminder> => {
+    const response = await api.post<Reminder>('/reminders', data);
+    return response.data;
+  },
+  update: async (id: string, data: UpdateReminderRequest): Promise<Reminder> => {
+    const response = await api.put<Reminder>(`/reminders/${id}`, data);
+    return response.data;
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/reminders/${id}`);
+  },
+};
+
+// Budget item API endpoints
+export const budgetItemApi = {
+  getAll: async (): Promise<BudgetItem[]> => {
+    const response = await api.get<BudgetItem[]>('/budget-items');
+    return response.data;
+  },
+  getById: async (id: string): Promise<BudgetItem> => {
+    const response = await api.get<BudgetItem>(`/budget-items/${id}`);
+    return response.data;
+  },
+  create: async (data: CreateBudgetItemRequest): Promise<BudgetItem> => {
+    const response = await api.post<BudgetItem>('/budget-items', data);
+    return response.data;
+  },
+  update: async (id: string, data: UpdateBudgetItemRequest): Promise<BudgetItem> => {
+    const response = await api.put<BudgetItem>(`/budget-items/${id}`, data);
+    return response.data;
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/budget-items/${id}`);
   },
 };
 

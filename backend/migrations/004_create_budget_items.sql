@@ -1,19 +1,20 @@
 -- Create budget_items table
 CREATE TABLE IF NOT EXISTS budget_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     category TEXT NOT NULL,
-    vendor_id INTEGER,
-    estimated_amount REAL NOT NULL DEFAULT 0,
-    actual_amount REAL DEFAULT 0,
-    paid_amount REAL DEFAULT 0,
-    payment_status TEXT DEFAULT 'pending' CHECK(payment_status IN (
-        'pending', 'deposit_paid', 'partially_paid', 'fully_paid'
+    vendor_id TEXT,
+    estimated_amount INTEGER NOT NULL DEFAULT 0,
+    actual_amount INTEGER DEFAULT 0,
+    paid_amount INTEGER DEFAULT 0,
+    payment_status TEXT DEFAULT 'unpaid' CHECK(payment_status IN (
+        'unpaid', 'deposit_paid', 'partially_paid', 'paid'
     )),
-    deposit_amount REAL,
-    deposit_due_date DATETIME,
+    deposit_amount INTEGER,
+    deposit_due_date TIMESTAMP,
+    final_payment_due_date TIMESTAMP,
     notes TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE SET NULL
 );
 

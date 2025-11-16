@@ -1,11 +1,11 @@
 -- Create tasks table
 CREATE TABLE IF NOT EXISTS tasks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     description TEXT,
     category TEXT,
-    vendor_id INTEGER,
-    due_date DATETIME,
+    vendor_id TEXT,
+    due_date TIMESTAMP,
     timeline_phase TEXT CHECK(timeline_phase IN (
         '12+ months', '9-12 months', '6-9 months', '3-6 months',
         '1-3 months', '1 month', '1 week', 'day of'
@@ -13,14 +13,14 @@ CREATE TABLE IF NOT EXISTS tasks (
     priority TEXT DEFAULT 'medium' CHECK(priority IN (
         'low', 'medium', 'high', 'urgent'
     )),
-    status TEXT DEFAULT 'pending' CHECK(status IN (
-        'pending', 'in_progress', 'completed', 'cancelled'
+    status TEXT DEFAULT 'todo' CHECK(status IN (
+        'todo', 'in_progress', 'waiting', 'completed', 'cancelled'
     )),
-    estimated_cost REAL,
-    actual_cost REAL,
+    estimated_cost INTEGER,
+    actual_cost INTEGER,
     notes TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE SET NULL
 );
 

@@ -1,9 +1,9 @@
 -- Create ai_searches table for tracking AI vendor search history and costs
 CREATE TABLE IF NOT EXISTS ai_searches (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     query_text TEXT,
     query_type TEXT NOT NULL CHECK(query_type IN (
-        'text_search', 'image_analysis', 'vendor_extraction'
+        'text', 'image', 'hybrid'
     )),
     search_parameters TEXT, -- JSON object with search criteria
     image_url TEXT,
@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS ai_searches (
     vendors_created TEXT, -- JSON array of vendor IDs created from this search
     ai_model TEXT NOT NULL, -- e.g., "claude-sonnet-4"
     tokens_used INTEGER DEFAULT 0,
-    cost REAL DEFAULT 0, -- Cost in dollars
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    cost INTEGER DEFAULT 0, -- Cost in cents
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create index on query_type for search analytics

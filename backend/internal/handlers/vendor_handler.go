@@ -21,10 +21,14 @@ func NewVendorHandler() *VendorHandler {
 	}
 }
 
-// GetAll returns all vendors
-// GET /api/vendors
+// GetAll returns all vendors with optional filtering
+// GET /api/vendors?category=photographer&status=considering&search=name
 func (h *VendorHandler) GetAll(c *gin.Context) {
-	vendors, err := h.service.GetAll()
+	category := c.Query("category")
+	status := c.Query("status")
+	search := c.Query("search")
+
+	vendors, err := h.service.GetAll(category, status, search)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to retrieve vendors",

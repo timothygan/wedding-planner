@@ -1,8 +1,8 @@
 # Wedding Planner - Implementation Progress
 
-**Last Updated:** 2025-11-15
+**Last Updated:** 2025-01-27
 **Current Phase:** Phase 2 - Core Features
-**Status:** ✅ Phase 1 Complete
+**Status:** ✅ Phase 1 Complete | 🚧 Phase 2 In Progress
 
 ---
 
@@ -10,7 +10,7 @@
 
 - [x] **Phase 0: Planning & Research** (COMPLETE)
 - [x] **Phase 1: Foundation** (COMPLETE - 2025-11-15)
-- [ ] **Phase 2: Core Features** (CURRENT - Week 3-4)
+- [ ] **Phase 2: Core Features** (IN PROGRESS - 2025-01-27)
 - [ ] **Phase 3: AI Integration** (Week 5-6)
 - [ ] **Phase 4: Polish & Production** (Week 7-8)
 
@@ -73,29 +73,30 @@
 
 ---
 
-## Phase 2: Core Features (NEXT)
+## Phase 2: Core Features (IN PROGRESS)
 
 ### Vendor Management
-- [ ] Vendor filtering by category/status
-- [ ] Local search (name, city, tags)
-- [ ] Status tracking UI with status transitions
+- [x] Vendor filtering by category/status (Backend + Frontend UI)
+- [x] Local search (name, city, notes) (Backend + Frontend UI)
+- [ ] Status tracking UI with status transitions (Status badges exist, transition UI pending)
 - [ ] Notes editor with auto-save
 - [ ] Vendor comparison view (side-by-side)
 
 ### Tasks & Reminders
-- [ ] Task CRUD implementation
+- [x] Task CRUD implementation (Backend + Frontend)
 - [ ] Timeline phase UI (visual timeline)
-- [ ] Task priority badges
-- [ ] Reminder creation flow
+- [x] Task priority badges (Implemented in TasksPage)
+- [x] Reminder CRUD implementation (Backend + Frontend hooks)
+- [ ] Reminder creation flow UI
 - [ ] Browser push notifications
 - [ ] Email notifications via Resend
-- [ ] Recurring reminders
+- [ ] Recurring reminders (Backend supports, UI pending)
 
 ### Budget Tracking
-- [ ] Budget items CRUD
-- [ ] Payment status tracking
-- [ ] Budget summary dashboard
-- [ ] Estimated vs actual comparison
+- [x] Budget items CRUD (Backend + Frontend)
+- [x] Payment status tracking (Implemented in BudgetPage)
+- [x] Budget summary dashboard (Summary cards with totals)
+- [x] Estimated vs actual comparison (Displayed in BudgetPage)
 - [ ] Payment due date reminders
 - [ ] Budget alerts (over budget warnings)
 
@@ -163,6 +164,24 @@ _None currently_
 
 - `2025-11-15-15_29_wedding-planner-architecture-research.md` - Full architecture research
 - `2025-11-15-22_56_phase1-foundation-implementation.md` - Phase 1 implementation details
+
+## Phase 2 Implementation Notes (2025-01-27)
+
+### Completed Features
+- **Migrations Fixed**: Updated all tables (tasks, reminders, budget_items, communications, ai_searches) to use TEXT UUID IDs matching vendors pattern
+- **Vendor Filtering & Search**: Backend query parameters for category/status/search, frontend UI with dropdowns and search input
+- **Tasks CRUD**: Complete backend (models, services, handlers) and frontend (types, API, hooks, TasksPage)
+- **Reminders CRUD**: Complete backend (models, services, handlers) and frontend (types, API, hooks)
+- **Budget Items CRUD**: Complete backend (models, services, handlers) and frontend (types, API, hooks, BudgetPage)
+- **Navigation**: Added Navigation component with links to Vendors, Tasks, and Budget pages
+- **UI Enhancements**: Priority badges, status badges, currency formatting, summary cards
+
+### Technical Details
+- All IDs now use TEXT UUID v4 format (consistent across all tables)
+- Money values stored as INTEGER cents in database
+- JSON fields (notification_channels) properly marshaled/unmarshaled
+- React Query hooks for all CRUD operations with proper cache invalidation
+- Parameterized SQL queries throughout (SQL injection prevention)
 
 ---
 

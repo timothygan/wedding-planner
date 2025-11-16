@@ -18,18 +18,37 @@ func NewVendorService() *VendorService {
 	return &VendorService{}
 }
 
-// GetAll retrieves all vendors
-func (s *VendorService) GetAll() ([]models.Vendor, error) {
+// GetAll retrieves all vendors with optional filtering
+func (s *VendorService) GetAll(category, status, search string) ([]models.Vendor, error) {
 	query := `
 		SELECT id, name, category, email, phone, website, city, state,
 		       starting_price, status, notes, ai_discovery_source,
 		       last_communication_at, last_communication_type,
 		       created_at, updated_at
 		FROM vendors
-		ORDER BY created_at DESC
+		WHERE 1=1
 	`
+	args := []interface{}{}
 
-	rows, err := db.DB.Query(query)
+	if category != "" {
+		query += " AND category = ?"
+		args = append(args, category)
+	}
+
+	if status != "" {
+		query += " AND status = ?"
+		args = append(args, status)
+	}
+
+	if search != "" {
+		query += " AND (name LIKE ? OR city LIKE ? OR notes LIKE ?)"
+		searchPattern := "%" + search + "%"
+		args = append(args, searchPattern, searchPattern, searchPattern)
+	}
+
+	query += " ORDER BY created_at DESC"
+
+	rows, err := db.DB.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query vendors: %w", err)
 	}

@@ -72,6 +72,39 @@ func main() {
 			vendors.PUT("/:id", vendorHandler.Update)
 			vendors.DELETE("/:id", vendorHandler.Delete)
 		}
+
+		// Task routes
+		taskHandler := handlers.NewTaskHandler()
+		tasks := api.Group("/tasks")
+		{
+			tasks.GET("", taskHandler.GetAll)
+			tasks.GET("/:id", taskHandler.GetByID)
+			tasks.POST("", taskHandler.Create)
+			tasks.PUT("/:id", taskHandler.Update)
+			tasks.DELETE("/:id", taskHandler.Delete)
+		}
+
+		// Reminder routes
+		reminderHandler := handlers.NewReminderHandler()
+		reminders := api.Group("/reminders")
+		{
+			reminders.GET("", reminderHandler.GetAll)
+			reminders.GET("/:id", reminderHandler.GetByID)
+			reminders.POST("", reminderHandler.Create)
+			reminders.PUT("/:id", reminderHandler.Update)
+			reminders.DELETE("/:id", reminderHandler.Delete)
+		}
+
+		// Budget item routes
+		budgetItemHandler := handlers.NewBudgetItemHandler()
+		budgetItems := api.Group("/budget-items")
+		{
+			budgetItems.GET("", budgetItemHandler.GetAll)
+			budgetItems.GET("/:id", budgetItemHandler.GetByID)
+			budgetItems.POST("", budgetItemHandler.Create)
+			budgetItems.PUT("/:id", budgetItemHandler.Update)
+			budgetItems.DELETE("/:id", budgetItemHandler.Delete)
+		}
 	}
 
 	// Start server

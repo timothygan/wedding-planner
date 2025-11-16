@@ -11,16 +11,16 @@ CREATE TABLE IF NOT EXISTS vendors (
     website TEXT,
     city TEXT,
     state TEXT,
-    starting_price REAL,
+    starting_price INTEGER,
     status TEXT NOT NULL DEFAULT 'considering' CHECK(status IN (
         'considering', 'booked', 'rejected'
     )),
     notes TEXT,
     ai_discovery_source TEXT,
-    last_communication_at DATETIME,
+    last_communication_at TIMESTAMP,
     last_communication_type TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create index on category for faster filtering

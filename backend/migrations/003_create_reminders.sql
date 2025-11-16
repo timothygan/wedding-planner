@@ -1,23 +1,24 @@
 -- Create reminders table
 CREATE TABLE IF NOT EXISTS reminders (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    task_id INTEGER,
-    vendor_id INTEGER,
+    id TEXT PRIMARY KEY,
+    task_id TEXT,
+    vendor_id TEXT,
     title TEXT NOT NULL,
     message TEXT,
     reminder_type TEXT NOT NULL CHECK(reminder_type IN (
-        'task_due', 'vendor_follow_up', 'payment_due', 'custom'
+        'follow_up', 'payment_due', 'meeting', 'deadline', 'custom'
     )),
-    remind_at DATETIME NOT NULL,
+    remind_at TIMESTAMP NOT NULL,
     recurrence TEXT CHECK(recurrence IN (
         'none', 'daily', 'weekly', 'monthly'
     )) DEFAULT 'none',
     notification_channels TEXT NOT NULL, -- JSON array: ["browser", "email"]
     status TEXT DEFAULT 'pending' CHECK(status IN (
-        'pending', 'sent', 'dismissed'
+        'pending', 'sent', 'dismissed', 'snoozed'
     )),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CHECK (task_id IS NOT NULL OR vendor_id IS NOT NULL),
     FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
     FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
 );
