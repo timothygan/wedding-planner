@@ -30,10 +30,7 @@ func (h *VendorHandler) GetAll(c *gin.Context) {
 
 	vendors, err := h.service.GetAll(category, status, search)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to retrieve vendors",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "retrieve vendors", err)
 		return
 	}
 
@@ -48,15 +45,10 @@ func (h *VendorHandler) GetByID(c *gin.Context) {
 	vendor, err := h.service.GetByID(id)
 	if err != nil {
 		if err.Error() == "vendor not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Vendor not found",
-			})
+			respondWithNotFound(c, "Vendor")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to retrieve vendor",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "retrieve vendor", err)
 		return
 	}
 
@@ -68,53 +60,25 @@ func (h *VendorHandler) GetByID(c *gin.Context) {
 func (h *VendorHandler) Create(c *gin.Context) {
 	var req models.CreateVendorRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request body",
-			"details": err.Error(),
-		})
+		respondWithError(c, http.StatusBadRequest, "Invalid request body", err.Error())
 		return
 	}
 
 	// Validate category
-	validCategory := false
-	for _, cat := range models.ValidCategories {
-		if req.Category == cat {
-			validCategory = true
-			break
-		}
-	}
-	if !validCategory {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid category",
-			"valid_categories": models.ValidCategories,
-		})
+	if !validateEnum(req.Category, models.ValidCategories) {
+		respondWithValidationError(c, "category", models.ValidCategories)
 		return
 	}
 
 	// Validate status if provided
-	if req.Status != "" {
-		validStatus := false
-		for _, status := range models.ValidStatuses {
-			if req.Status == status {
-				validStatus = true
-				break
-			}
-		}
-		if !validStatus {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid status",
-				"valid_statuses": models.ValidStatuses,
-			})
-			return
-		}
+	if req.Status != "" && !validateEnum(req.Status, models.ValidStatuses) {
+		respondWithValidationError(c, "status", models.ValidStatuses)
+		return
 	}
 
 	vendor, err := h.service.Create(req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to create vendor",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "create vendor", err)
 		return
 	}
 
@@ -128,61 +92,29 @@ func (h *VendorHandler) Update(c *gin.Context) {
 
 	var req models.UpdateVendorRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request body",
-			"details": err.Error(),
-		})
+		respondWithError(c, http.StatusBadRequest, "Invalid request body", err.Error())
 		return
 	}
 
 	// Validate category if provided
-	if req.Category != nil {
-		validCategory := false
-		for _, cat := range models.ValidCategories {
-			if *req.Category == cat {
-				validCategory = true
-				break
-			}
-		}
-		if !validCategory {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid category",
-				"valid_categories": models.ValidCategories,
-			})
-			return
-		}
+	if !validateEnumPtr(req.Category, models.ValidCategories) {
+		respondWithValidationError(c, "category", models.ValidCategories)
+		return
 	}
 
 	// Validate status if provided
-	if req.Status != nil {
-		validStatus := false
-		for _, status := range models.ValidStatuses {
-			if *req.Status == status {
-				validStatus = true
-				break
-			}
-		}
-		if !validStatus {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid status",
-				"valid_statuses": models.ValidStatuses,
-			})
-			return
-		}
+	if !validateEnumPtr(req.Status, models.ValidStatuses) {
+		respondWithValidationError(c, "status", models.ValidStatuses)
+		return
 	}
 
 	vendor, err := h.service.Update(id, req)
 	if err != nil {
 		if err.Error() == "vendor not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Vendor not found",
-			})
+			respondWithNotFound(c, "Vendor")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to update vendor",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "update vendor", err)
 		return
 	}
 
@@ -197,15 +129,10 @@ func (h *VendorHandler) Delete(c *gin.Context) {
 	err := h.service.Delete(id)
 	if err != nil {
 		if err.Error() == "vendor not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Vendor not found",
-			})
+			respondWithNotFound(c, "Vendor")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to delete vendor",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "delete vendor", err)
 		return
 	}
 

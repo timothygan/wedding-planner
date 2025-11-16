@@ -86,14 +86,16 @@ func main() {
 
 		// Reminder routes
 		reminderHandler := handlers.NewReminderHandler()
-		reminderCheckerHandler := handlers.NewReminderCheckerHandler()
+		
+		// Register /due route before the reminders group to avoid route conflict
+		api.GET("/reminders/due", reminderHandler.GetDueReminders)
+		
 		reminders := api.Group("/reminders")
 		{
 			reminders.GET("", reminderHandler.GetAll)
-			reminders.GET("/due", reminderCheckerHandler.GetDueReminders)
 			reminders.GET("/:id", reminderHandler.GetByID)
 			reminders.POST("", reminderHandler.Create)
-			reminders.POST("/:id/process", reminderCheckerHandler.ProcessReminder)
+			reminders.POST("/:id/process", reminderHandler.ProcessReminder)
 			reminders.PUT("/:id", reminderHandler.Update)
 			reminders.DELETE("/:id", reminderHandler.Delete)
 		}

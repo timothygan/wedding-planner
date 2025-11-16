@@ -26,10 +26,7 @@ func NewBudgetItemHandler() *BudgetItemHandler {
 func (h *BudgetItemHandler) GetAll(c *gin.Context) {
 	items, err := h.service.GetAll()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to retrieve budget items",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "retrieve budget items", err)
 		return
 	}
 
@@ -44,15 +41,10 @@ func (h *BudgetItemHandler) GetByID(c *gin.Context) {
 	item, err := h.service.GetByID(id)
 	if err != nil {
 		if err.Error() == "budget item not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Budget item not found",
-			})
+			respondWithNotFound(c, "Budget item")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to retrieve budget item",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "retrieve budget item", err)
 		return
 	}
 
@@ -64,37 +56,19 @@ func (h *BudgetItemHandler) GetByID(c *gin.Context) {
 func (h *BudgetItemHandler) Create(c *gin.Context) {
 	var req models.CreateBudgetItemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request body",
-			"details": err.Error(),
-		})
+		respondWithError(c, http.StatusBadRequest, "Invalid request body", err.Error())
 		return
 	}
 
 	// Validate payment status if provided
-	if req.PaymentStatus != "" {
-		validStatus := false
-		for _, s := range models.ValidPaymentStatuses {
-			if req.PaymentStatus == s {
-				validStatus = true
-				break
-			}
-		}
-		if !validStatus {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid payment status",
-				"valid_statuses": models.ValidPaymentStatuses,
-			})
-			return
-		}
+	if req.PaymentStatus != "" && !validateEnum(req.PaymentStatus, models.ValidPaymentStatuses) {
+		respondWithValidationError(c, "payment_status", models.ValidPaymentStatuses)
+		return
 	}
 
 	item, err := h.service.Create(req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to create budget item",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "create budget item", err)
 		return
 	}
 
@@ -108,43 +82,23 @@ func (h *BudgetItemHandler) Update(c *gin.Context) {
 
 	var req models.UpdateBudgetItemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request body",
-			"details": err.Error(),
-		})
+		respondWithError(c, http.StatusBadRequest, "Invalid request body", err.Error())
 		return
 	}
 
 	// Validate payment status if provided
-	if req.PaymentStatus != nil {
-		validStatus := false
-		for _, s := range models.ValidPaymentStatuses {
-			if *req.PaymentStatus == s {
-				validStatus = true
-				break
-			}
-		}
-		if !validStatus {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid payment status",
-				"valid_statuses": models.ValidPaymentStatuses,
-			})
-			return
-		}
+	if !validateEnumPtr(req.PaymentStatus, models.ValidPaymentStatuses) {
+		respondWithValidationError(c, "payment_status", models.ValidPaymentStatuses)
+		return
 	}
 
 	item, err := h.service.Update(id, req)
 	if err != nil {
 		if err.Error() == "budget item not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Budget item not found",
-			})
+			respondWithNotFound(c, "Budget item")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to update budget item",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "update budget item", err)
 		return
 	}
 
@@ -159,15 +113,10 @@ func (h *BudgetItemHandler) Delete(c *gin.Context) {
 	err := h.service.Delete(id)
 	if err != nil {
 		if err.Error() == "budget item not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Budget item not found",
-			})
+			respondWithNotFound(c, "Budget item")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to delete budget item",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "delete budget item", err)
 		return
 	}
 

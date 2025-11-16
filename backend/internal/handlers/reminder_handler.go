@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -11,13 +12,15 @@ import (
 
 // ReminderHandler handles HTTP requests for reminders
 type ReminderHandler struct {
-	service *services.ReminderService
+	service  *services.ReminderService
+	checker  *services.ReminderChecker
 }
 
 // NewReminderHandler creates a new reminder handler
 func NewReminderHandler() *ReminderHandler {
 	return &ReminderHandler{
 		service: services.NewReminderService(),
+		checker: services.NewReminderChecker(),
 	}
 }
 
@@ -26,10 +29,7 @@ func NewReminderHandler() *ReminderHandler {
 func (h *ReminderHandler) GetAll(c *gin.Context) {
 	reminders, err := h.service.GetAll()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to retrieve reminders",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "retrieve reminders", err)
 		return
 	}
 
@@ -44,15 +44,10 @@ func (h *ReminderHandler) GetByID(c *gin.Context) {
 	reminder, err := h.service.GetByID(id)
 	if err != nil {
 		if err.Error() == "reminder not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Reminder not found",
-			})
+			respondWithNotFound(c, "Reminder")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to retrieve reminder",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "retrieve reminder", err)
 		return
 	}
 
@@ -64,61 +59,31 @@ func (h *ReminderHandler) GetByID(c *gin.Context) {
 func (h *ReminderHandler) Create(c *gin.Context) {
 	var req models.CreateReminderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request body",
-			"details": err.Error(),
-		})
+		respondWithError(c, http.StatusBadRequest, "Invalid request body", err.Error())
 		return
 	}
 
 	// Validate that at least one of task_id or vendor_id is provided
 	if req.TaskID == nil && req.VendorID == nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Either task_id or vendor_id must be provided",
-		})
+		respondWithError(c, http.StatusBadRequest, "Either task_id or vendor_id must be provided")
 		return
 	}
 
 	// Validate reminder type
-	validType := false
-	for _, t := range models.ValidReminderTypes {
-		if req.ReminderType == t {
-			validType = true
-			break
-		}
-	}
-	if !validType {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid reminder type",
-			"valid_types": models.ValidReminderTypes,
-		})
+	if !validateEnum(req.ReminderType, models.ValidReminderTypes) {
+		respondWithValidationError(c, "reminder_type", models.ValidReminderTypes)
 		return
 	}
 
 	// Validate recurrence if provided
-	if req.Recurrence != "" {
-		validRecurrence := false
-		for _, r := range models.ValidRecurrences {
-			if req.Recurrence == r {
-				validRecurrence = true
-				break
-			}
-		}
-		if !validRecurrence {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid recurrence",
-				"valid_recurrences": models.ValidRecurrences,
-			})
-			return
-		}
+	if req.Recurrence != "" && !validateEnum(req.Recurrence, models.ValidRecurrences) {
+		respondWithValidationError(c, "recurrence", models.ValidRecurrences)
+		return
 	}
 
 	reminder, err := h.service.Create(req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to create reminder",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "create reminder", err)
 		return
 	}
 
@@ -132,79 +97,35 @@ func (h *ReminderHandler) Update(c *gin.Context) {
 
 	var req models.UpdateReminderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request body",
-			"details": err.Error(),
-		})
+		respondWithError(c, http.StatusBadRequest, "Invalid request body", err.Error())
 		return
 	}
 
 	// Validate reminder type if provided
-	if req.ReminderType != nil {
-		validType := false
-		for _, t := range models.ValidReminderTypes {
-			if *req.ReminderType == t {
-				validType = true
-				break
-			}
-		}
-		if !validType {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid reminder type",
-				"valid_types": models.ValidReminderTypes,
-			})
-			return
-		}
+	if !validateEnumPtr(req.ReminderType, models.ValidReminderTypes) {
+		respondWithValidationError(c, "reminder_type", models.ValidReminderTypes)
+		return
 	}
 
 	// Validate recurrence if provided
-	if req.Recurrence != nil {
-		validRecurrence := false
-		for _, r := range models.ValidRecurrences {
-			if *req.Recurrence == r {
-				validRecurrence = true
-				break
-			}
-		}
-		if !validRecurrence {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid recurrence",
-				"valid_recurrences": models.ValidRecurrences,
-			})
-			return
-		}
+	if !validateEnumPtr(req.Recurrence, models.ValidRecurrences) {
+		respondWithValidationError(c, "recurrence", models.ValidRecurrences)
+		return
 	}
 
 	// Validate status if provided
-	if req.Status != nil {
-		validStatus := false
-		for _, s := range models.ValidReminderStatuses {
-			if *req.Status == s {
-				validStatus = true
-				break
-			}
-		}
-		if !validStatus {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid status",
-				"valid_statuses": models.ValidReminderStatuses,
-			})
-			return
-		}
+	if !validateEnumPtr(req.Status, models.ValidReminderStatuses) {
+		respondWithValidationError(c, "status", models.ValidReminderStatuses)
+		return
 	}
 
 	reminder, err := h.service.Update(id, req)
 	if err != nil {
 		if err.Error() == "reminder not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Reminder not found",
-			})
+			respondWithNotFound(c, "Reminder")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to update reminder",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "update reminder", err)
 		return
 	}
 
@@ -219,20 +140,62 @@ func (h *ReminderHandler) Delete(c *gin.Context) {
 	err := h.service.Delete(id)
 	if err != nil {
 		if err.Error() == "reminder not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Reminder not found",
-			})
+			respondWithNotFound(c, "Reminder")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to delete reminder",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "delete reminder", err)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Reminder deleted successfully",
+	})
+}
+
+// GetDueReminders returns reminders that are due
+// GET /api/reminders/due
+func (h *ReminderHandler) GetDueReminders(c *gin.Context) {
+	reminders, err := h.checker.GetDueReminders()
+	if err != nil {
+		respondWithInternalError(c, "retrieve due reminders", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, reminders)
+}
+
+// ProcessReminder processes a due reminder (sends notifications)
+// POST /api/reminders/:id/process
+func (h *ReminderHandler) ProcessReminder(c *gin.Context) {
+	id := c.Param("id")
+	userEmail := c.Query("email") // Optional user email for email notifications
+
+	reminder, err := h.service.GetByID(id)
+	if err != nil {
+		respondWithNotFound(c, "Reminder")
+		return
+	}
+
+	// Check if reminder is due
+	now := time.Now()
+	if reminder.RemindAt.After(now) {
+		respondWithError(c, http.StatusBadRequest, "Reminder is not yet due")
+		return
+	}
+
+	if reminder.Status != "pending" {
+		respondWithError(c, http.StatusBadRequest, "Reminder has already been processed")
+		return
+	}
+
+	err = h.checker.ProcessReminder(reminder, userEmail)
+	if err != nil {
+		respondWithInternalError(c, "process reminder", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Reminder processed successfully",
 	})
 }
 

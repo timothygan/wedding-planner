@@ -26,10 +26,7 @@ func NewTaskHandler() *TaskHandler {
 func (h *TaskHandler) GetAll(c *gin.Context) {
 	tasks, err := h.service.GetAll()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to retrieve tasks",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "retrieve tasks", err)
 		return
 	}
 
@@ -44,15 +41,10 @@ func (h *TaskHandler) GetByID(c *gin.Context) {
 	task, err := h.service.GetByID(id)
 	if err != nil {
 		if err.Error() == "task not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Task not found",
-			})
+			respondWithNotFound(c, "Task")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to retrieve task",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "retrieve task", err)
 		return
 	}
 
@@ -64,73 +56,31 @@ func (h *TaskHandler) GetByID(c *gin.Context) {
 func (h *TaskHandler) Create(c *gin.Context) {
 	var req models.CreateTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request body",
-			"details": err.Error(),
-		})
+		respondWithError(c, http.StatusBadRequest, "Invalid request body", err.Error())
 		return
 	}
 
 	// Validate priority if provided
-	if req.Priority != "" {
-		validPriority := false
-		for _, p := range models.ValidTaskPriorities {
-			if req.Priority == p {
-				validPriority = true
-				break
-			}
-		}
-		if !validPriority {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid priority",
-				"valid_priorities": models.ValidTaskPriorities,
-			})
-			return
-		}
+	if req.Priority != "" && !validateEnum(req.Priority, models.ValidTaskPriorities) {
+		respondWithValidationError(c, "priority", models.ValidTaskPriorities)
+		return
 	}
 
 	// Validate status if provided
-	if req.Status != "" {
-		validStatus := false
-		for _, s := range models.ValidTaskStatuses {
-			if req.Status == s {
-				validStatus = true
-				break
-			}
-		}
-		if !validStatus {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid status",
-				"valid_statuses": models.ValidTaskStatuses,
-			})
-			return
-		}
+	if req.Status != "" && !validateEnum(req.Status, models.ValidTaskStatuses) {
+		respondWithValidationError(c, "status", models.ValidTaskStatuses)
+		return
 	}
 
 	// Validate timeline phase if provided
-	if req.TimelinePhase != nil {
-		validPhase := false
-		for _, p := range models.ValidTimelinePhases {
-			if *req.TimelinePhase == p {
-				validPhase = true
-				break
-			}
-		}
-		if !validPhase {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid timeline phase",
-				"valid_phases": models.ValidTimelinePhases,
-			})
-			return
-		}
+	if req.TimelinePhase != nil && !validateEnum(*req.TimelinePhase, models.ValidTimelinePhases) {
+		respondWithValidationError(c, "timeline_phase", models.ValidTimelinePhases)
+		return
 	}
 
 	task, err := h.service.Create(req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to create task",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "create task", err)
 		return
 	}
 
@@ -144,79 +94,35 @@ func (h *TaskHandler) Update(c *gin.Context) {
 
 	var req models.UpdateTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request body",
-			"details": err.Error(),
-		})
+		respondWithError(c, http.StatusBadRequest, "Invalid request body", err.Error())
 		return
 	}
 
 	// Validate priority if provided
-	if req.Priority != nil {
-		validPriority := false
-		for _, p := range models.ValidTaskPriorities {
-			if *req.Priority == p {
-				validPriority = true
-				break
-			}
-		}
-		if !validPriority {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid priority",
-				"valid_priorities": models.ValidTaskPriorities,
-			})
-			return
-		}
+	if !validateEnumPtr(req.Priority, models.ValidTaskPriorities) {
+		respondWithValidationError(c, "priority", models.ValidTaskPriorities)
+		return
 	}
 
 	// Validate status if provided
-	if req.Status != nil {
-		validStatus := false
-		for _, s := range models.ValidTaskStatuses {
-			if *req.Status == s {
-				validStatus = true
-				break
-			}
-		}
-		if !validStatus {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid status",
-				"valid_statuses": models.ValidTaskStatuses,
-			})
-			return
-		}
+	if !validateEnumPtr(req.Status, models.ValidTaskStatuses) {
+		respondWithValidationError(c, "status", models.ValidTaskStatuses)
+		return
 	}
 
 	// Validate timeline phase if provided
-	if req.TimelinePhase != nil {
-		validPhase := false
-		for _, p := range models.ValidTimelinePhases {
-			if *req.TimelinePhase == p {
-				validPhase = true
-				break
-			}
-		}
-		if !validPhase {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid timeline phase",
-				"valid_phases": models.ValidTimelinePhases,
-			})
-			return
-		}
+	if req.TimelinePhase != nil && !validateEnum(*req.TimelinePhase, models.ValidTimelinePhases) {
+		respondWithValidationError(c, "timeline_phase", models.ValidTimelinePhases)
+		return
 	}
 
 	task, err := h.service.Update(id, req)
 	if err != nil {
 		if err.Error() == "task not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Task not found",
-			})
+			respondWithNotFound(c, "Task")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to update task",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "update task", err)
 		return
 	}
 
@@ -231,15 +137,10 @@ func (h *TaskHandler) Delete(c *gin.Context) {
 	err := h.service.Delete(id)
 	if err != nil {
 		if err.Error() == "task not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Task not found",
-			})
+			respondWithNotFound(c, "Task")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to delete task",
-			"details": err.Error(),
-		})
+		respondWithInternalError(c, "delete task", err)
 		return
 	}
 
