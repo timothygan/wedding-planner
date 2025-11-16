@@ -94,6 +94,16 @@ export const reminderApi = {
   delete: async (id: string): Promise<void> => {
     await api.delete(`/reminders/${id}`);
   },
+  // Get due reminders
+  getDue: async (): Promise<Reminder[]> => {
+    const response = await api.get<Reminder[]>('/reminders/due');
+    return response.data;
+  },
+  // Process reminder (send notifications)
+  process: async (id: string, email?: string): Promise<void> => {
+    const url = email ? `/reminders/${id}/process?email=${encodeURIComponent(email)}` : `/reminders/${id}/process`;
+    await api.post(url);
+  },
 };
 
 // Budget item API endpoints

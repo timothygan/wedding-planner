@@ -2,7 +2,7 @@
 
 **Last Updated:** 2025-01-27
 **Current Phase:** Phase 2 - Core Features
-**Status:** ✅ Phase 1 Complete | 🚧 Phase 2 In Progress
+**Status:** ✅ Phase 1 Complete | ✅ Phase 2 Complete
 
 ---
 
@@ -10,7 +10,7 @@
 
 - [x] **Phase 0: Planning & Research** (COMPLETE)
 - [x] **Phase 1: Foundation** (COMPLETE - 2025-11-15)
-- [ ] **Phase 2: Core Features** (IN PROGRESS - 2025-01-27)
+- [x] **Phase 2: Core Features** (COMPLETE - 2025-01-27)
 - [ ] **Phase 3: AI Integration** (Week 5-6)
 - [ ] **Phase 4: Polish & Production** (Week 7-8)
 
@@ -73,32 +73,32 @@
 
 ---
 
-## Phase 2: Core Features (IN PROGRESS)
+## Phase 2: Core Features (COMPLETE ✅)
 
 ### Vendor Management
 - [x] Vendor filtering by category/status (Backend + Frontend UI)
 - [x] Local search (name, city, notes) (Backend + Frontend UI)
-- [ ] Status tracking UI with status transitions (Status badges exist, transition UI pending)
-- [ ] Notes editor with auto-save
-- [ ] Vendor comparison view (side-by-side)
+- [x] Status tracking UI with status transitions (Dropdown select with immediate updates)
+- [x] Notes editor with auto-save (Click-to-edit with 1-second debounce)
+- [x] Vendor comparison view (Side-by-side table with checkbox selection)
 
 ### Tasks & Reminders
 - [x] Task CRUD implementation (Backend + Frontend)
-- [ ] Timeline phase UI (visual timeline)
+- [x] Timeline phase UI (Visual timeline view with phase grouping)
 - [x] Task priority badges (Implemented in TasksPage)
 - [x] Reminder CRUD implementation (Backend + Frontend hooks)
-- [ ] Reminder creation flow UI
-- [ ] Browser push notifications
-- [ ] Email notifications via Resend
-- [ ] Recurring reminders (Backend supports, UI pending)
+- [x] Reminder creation flow UI (Full form with unified task/vendor dropdown)
+- [x] Browser push notifications (Notification API integration with permission request)
+- [x] Email notifications via Resend (Backend service with Resend SDK)
+- [x] Recurring reminders (Backend auto-creates next occurrence, UI shows recurrence badges)
 
 ### Budget Tracking
 - [x] Budget items CRUD (Backend + Frontend)
-- [x] Payment status tracking (Implemented in BudgetPage)
+- [x] Payment status tracking (Progress bars, percentage indicators, color-coded status)
 - [x] Budget summary dashboard (Summary cards with totals)
-- [x] Estimated vs actual comparison (Displayed in BudgetPage)
-- [ ] Payment due date reminders
-- [ ] Budget alerts (over budget warnings)
+- [x] Estimated vs actual comparison (Visual indicators and over-budget highlighting)
+- [x] Payment due date reminders (Alert banner for payments due in next 30 days)
+- [x] Budget alerts (Over budget warnings with itemized breakdown)
 
 ---
 
@@ -169,19 +169,23 @@ _None currently_
 
 ### Completed Features
 - **Migrations Fixed**: Updated all tables (tasks, reminders, budget_items, communications, ai_searches) to use TEXT UUID IDs matching vendors pattern
-- **Vendor Filtering & Search**: Backend query parameters for category/status/search, frontend UI with dropdowns and search input
-- **Tasks CRUD**: Complete backend (models, services, handlers) and frontend (types, API, hooks, TasksPage)
-- **Reminders CRUD**: Complete backend (models, services, handlers) and frontend (types, API, hooks)
-- **Budget Items CRUD**: Complete backend (models, services, handlers) and frontend (types, API, hooks, BudgetPage)
-- **Navigation**: Added Navigation component with links to Vendors, Tasks, and Budget pages
-- **UI Enhancements**: Priority badges, status badges, currency formatting, summary cards
+- **Vendor Management**: Filtering, search, status transitions, notes editor with auto-save, comparison view
+- **Tasks CRUD**: Complete backend + frontend with timeline view and priority badges
+- **Reminders CRUD**: Complete backend + frontend with creation flow, push notifications, email notifications, recurring support
+- **Budget Items CRUD**: Complete backend + frontend with payment tracking, alerts, and due date reminders
+- **Navigation**: Added Navigation component with links to all pages
+- **UI Enhancements**: Priority badges, status badges, currency formatting, summary cards, progress bars, alert banners
 
 ### Technical Details
-- All IDs now use TEXT UUID v4 format (consistent across all tables)
+- All IDs use TEXT UUID v4 format (consistent across all tables)
 - Money values stored as INTEGER cents in database
 - JSON fields (notification_channels) properly marshaled/unmarshaled
 - React Query hooks for all CRUD operations with proper cache invalidation
 - Parameterized SQL queries throughout (SQL injection prevention)
+- Browser Push Notifications: Notification API with permission handling
+- Email Notifications: Resend SDK integration (requires RESEND_API_KEY and RESEND_FROM_EMAIL env vars)
+- Recurring Reminders: Backend automatically creates next occurrence when reminder is processed
+- Reminder Processing: GET /api/reminders/due and POST /api/reminders/:id/process endpoints
 
 ---
 

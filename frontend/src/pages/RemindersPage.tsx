@@ -1,17 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useReminders, useCreateReminder, useDeleteReminder } from '../hooks/useReminders';
 import { useTasks } from '../hooks/useTasks';
 import { useVendors } from '../hooks/useVendors';
+import { useDueReminders } from '../hooks/useDueReminders';
+import { usePushNotifications } from '../hooks/usePushNotifications';
+import { reminderApi } from '../services/api';
 import type { Reminder, ReminderType, ReminderStatus, Recurrence } from '../types/reminder';
 
 export default function RemindersPage() {
   const { data: reminders, isLoading, error } = useReminders();
+  const { data: dueReminders } = useDueReminders();
   const { data: tasks } = useTasks();
   const { data: vendors } = useVendors();
   const { mutate: createReminder } = useCreateReminder();
   const { mutate: deleteReminder } = useDeleteReminder();
+  const { isSupported: pushSupported, permission, requestPermission, showNotification } = usePushNotifications();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [validationError, setValidationError] = useState<string>('');
+  const [userEmail, setUserEmail] = useState<string>('');
   const [formData, setFormData] = useState({
     title: '',
     message: '',
@@ -22,6 +28,23 @@ export default function RemindersPage() {
     task_id: '',
     vendor_id: '',
   });
+
+  // Check for due reminders and show push notifications
+  useEffect(() => {
+    if (dueReminders && dueReminders.length > 0 && permission === 'granted') {
+      dueReminders.forEach((reminder) => {
+        if (reminder.status === 'pending') {
+          showNotification(reminder.title, {
+            body: reminder.message || 'Reminder due now',
+            tag: reminder.id, // Prevent duplicate notifications
+          });
+          
+          // Auto-process the reminder (mark as sent)
+          reminderApi.process(reminder.id, userEmail || undefined).catch(console.error);
+        }
+      });
+    }
+  }, [dueReminders, permission, showNotification, userEmail]);
 
   if (isLoading) {
     return (
@@ -50,13 +73,27 @@ export default function RemindersPage() {
       return;
     }
 
+    // Convert datetime-local string to ISO format
+    // datetime-local gives us "YYYY-MM-DDTHH:mm" (no timezone)
+    // We need to convert it to ISO format "YYYY-MM-DDTHH:mm:ssZ"
+    let remindAtISO: string;
+    if (formData.remind_at) {
+      // datetime-local format: "2025-01-27T14:30"
+      // Convert to Date object (treats as local time) then to ISO string
+      const date = new Date(formData.remind_at);
+      remindAtISO = date.toISOString();
+    } else {
+      setValidationError('Remind at date/time is required');
+      return;
+    }
+
     createReminder(
       {
         title: formData.title,
-        message: formData.message || undefined,
+        message: formData.message?.trim() || undefined,
         reminder_type: formData.reminder_type,
-        remind_at: formData.remind_at,
-        recurrence: formData.recurrence,
+        remind_at: remindAtISO,
+        recurrence: formData.recurrence || undefined,
         notification_channels: formData.notification_channels,
         task_id: formData.task_id || undefined,
         vendor_id: formData.vendor_id || undefined,
@@ -120,13 +157,61 @@ export default function RemindersPage() {
           <h1 className="text-3xl font-bold mb-2">Reminders</h1>
           <p className="text-gray-600">Manage your wedding planning reminders</p>
         </div>
-        <button
-          onClick={() => setShowCreateForm(!showCreateForm)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          {showCreateForm ? 'Cancel' : '+ New Reminder'}
-        </button>
+        <div className="flex gap-2">
+          {pushSupported && permission !== 'granted' && (
+            <button
+              onClick={requestPermission}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              Enable Notifications
+            </button>
+          )}
+          <button
+            onClick={() => setShowCreateForm(!showCreateForm)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            {showCreateForm ? 'Cancel' : '+ New Reminder'}
+          </button>
+        </div>
       </div>
+
+      {/* Notification Settings */}
+      {pushSupported && (
+        <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-blue-900">Push Notifications</h3>
+              <p className="text-sm text-blue-700">
+                {permission === 'granted'
+                  ? '✓ Browser notifications enabled'
+                  : permission === 'denied'
+                  ? '✗ Notifications blocked. Please enable in browser settings.'
+                  : 'Click "Enable Notifications" to receive reminder alerts'}
+              </p>
+            </div>
+            {permission !== 'granted' && (
+              <button
+                onClick={requestPermission}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Enable
+              </button>
+            )}
+          </div>
+          <div className="mt-3">
+            <label className="block text-sm font-medium text-blue-900 mb-1">
+              Email for email notifications (optional)
+            </label>
+            <input
+              type="email"
+              value={userEmail}
+              onChange={(e) => setUserEmail(e.target.value)}
+              placeholder="your@email.com"
+              className="w-full max-w-md px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+      )}
 
       {showCreateForm && (
         <div className="mb-8 bg-white border rounded-lg p-6">
@@ -204,11 +289,16 @@ export default function RemindersPage() {
                   }
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="none">None</option>
+                  <option value="none">None (one-time reminder)</option>
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
                   <option value="monthly">Monthly</option>
                 </select>
+                {formData.recurrence !== 'none' && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    This reminder will automatically repeat {formData.recurrence} after each occurrence.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -367,7 +457,9 @@ export default function RemindersPage() {
                 <div className="flex flex-wrap gap-2 text-sm text-gray-600 mt-2">
                   <span>⏰ {new Date(reminder.remind_at).toLocaleString()}</span>
                   {reminder.recurrence !== 'none' && (
-                    <span>🔄 {reminder.recurrence}</span>
+                    <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
+                      🔄 Recurring: {reminder.recurrence}
+                    </span>
                   )}
                   {reminder.task_id && (
                     <span>
@@ -437,7 +529,9 @@ export default function RemindersPage() {
                 <div className="flex flex-wrap gap-2 text-sm text-gray-600 mt-2">
                   <span>⏰ {new Date(reminder.remind_at).toLocaleString()}</span>
                   {reminder.recurrence !== 'none' && (
-                    <span>🔄 {reminder.recurrence}</span>
+                    <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
+                      🔄 Recurring: {reminder.recurrence}
+                    </span>
                   )}
                 </div>
 

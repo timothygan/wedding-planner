@@ -86,11 +86,14 @@ func main() {
 
 		// Reminder routes
 		reminderHandler := handlers.NewReminderHandler()
+		reminderCheckerHandler := handlers.NewReminderCheckerHandler()
 		reminders := api.Group("/reminders")
 		{
 			reminders.GET("", reminderHandler.GetAll)
+			reminders.GET("/due", reminderCheckerHandler.GetDueReminders)
 			reminders.GET("/:id", reminderHandler.GetByID)
 			reminders.POST("", reminderHandler.Create)
+			reminders.POST("/:id/process", reminderCheckerHandler.ProcessReminder)
 			reminders.PUT("/:id", reminderHandler.Update)
 			reminders.DELETE("/:id", reminderHandler.Delete)
 		}
