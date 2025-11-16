@@ -44,6 +44,16 @@ export default function Navigation() {
               >
                 Budget
               </Link>
+              <Link
+                to="/reminders"
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isActive('/reminders')
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                Reminders
+              </Link>
             </div>
           </div>
         </div>

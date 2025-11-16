@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { vendorApi } from '../services/api';
+import { useVendors } from '../hooks/useVendors';
 import VendorCard from '../components/vendors/VendorCard';
 import type { VendorCategory, VendorStatus } from '../types/vendor';
 
@@ -13,10 +12,11 @@ export default function VendorsPage() {
     data: vendors,
     isLoading,
     error,
-  } = useQuery({
-    queryKey: ['vendors', categoryFilter, statusFilter, searchQuery],
-    queryFn: () => vendorApi.getAll(categoryFilter || undefined, statusFilter || undefined, searchQuery || undefined),
-  });
+  } = useVendors(
+    categoryFilter || undefined,
+    statusFilter || undefined,
+    searchQuery || undefined
+  );
 
   if (isLoading) {
     return (

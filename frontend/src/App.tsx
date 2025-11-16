@@ -4,6 +4,7 @@ import Navigation from './components/Navigation';
 import VendorsPage from './pages/VendorsPage';
 import TasksPage from './pages/TasksPage';
 import BudgetPage from './pages/BudgetPage';
+import RemindersPage from './pages/RemindersPage';
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -27,6 +28,7 @@ function App() {
             <Route path="/vendors" element={<VendorsPage />} />
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/budget" element={<BudgetPage />} />
+            <Route path="/reminders" element={<RemindersPage />} />
           </Routes>
         </div>
       </BrowserRouter>
