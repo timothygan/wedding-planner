@@ -1,0 +1,348 @@
+# Wedding Planner - Cursor AI Rules
+
+**Project:** Single-user wedding planning app
+**Stack:** Vite + React + TypeScript (frontend), Go + Gin + SQLite (backend)
+**Architecture:** Monorepo with frontend/ and backend/ directories
+
+## Quick Reference
+- **Progress:** See `TODO.md` for current phase and tasks
+- **Code Patterns:** See `PATTERNS.md` for detailed examples
+- **Database Schema:** See `SCHEMA.md` for complete schema and relationships
+- **Full Context:** See `.claude/CLAUDE.md` for comprehensive project documentation
+
+---
+
+## Project Structure
+
+```
+wedding-planner/
+├── frontend/          # Vite + React + TypeScript
+│   └── src/
+│       ├── components/  # Reusable UI components
+│       ├── pages/      # Route pages
+│       ├── services/   # API clients
+│       ├── hooks/      # Custom React hooks
+│       └── types/      # TypeScript types
+├── backend/            # Go + Gin
+│   ├── cmd/api/      # Entry point (main.go)
+│   ├── internal/
+│   │   ├── handlers/  # HTTP handlers (CRUD endpoints)
+│   │   ├── models/    # Database models
+│   │   ├── services/  # Business logic
+│   │   ├── middleware/ # CORS, logging
+│   │   ├── db/        # Database connection
+│   │   └── ai/        # Claude API integration
+│   └── migrations/    # SQL migration files
+└── learnings/        # Learning documentation (one per task)
+```
+
+---
+
+## Critical Rules
+
+### Code Quality
+- **ALWAYS** add error handling to ALL database operations
+- **ALWAYS** use parameterized SQL queries (prevent injection)
+- **ALWAYS** validate user input on backend
+- **ALWAYS** check errors in Go (never ignore `err`)
+- Run `gofmt` before committing Go code
+- Run ESLint + Prettier before committing TypeScript code
+
+### Database
+- **CRITICAL:** Configure SQLite with WAL mode for production:
+  ```go
+  PRAGMA journal_mode = WAL;
+  PRAGMA synchronous = NORMAL;
+  PRAGMA foreign_keys = ON;
+  ```
+- Store money as INTEGER cents (e.g., $299.99 = 29999)
+- Use UUID v4 for all IDs (stored as TEXT)
+- Use ISO 8601 format for timestamps
+- Use CHECK constraints for ENUMs (see SCHEMA.md for values)
+
+### File Organization
+- Handlers: `backend/internal/handlers/` (one file per resource)
+- Services: `backend/internal/services/` (business logic)
+- Models: `backend/internal/models/` (database models)
+- Components: `frontend/src/components/` (reusable UI)
+- Pages: `frontend/src/pages/` (route pages)
+- Hooks: `frontend/src/hooks/` (custom React hooks)
+
+---
+
+## Go Backend Patterns
+
+### Handler Pattern (Standard CRUD)
+```go
+// GET /api/vendors/:id
+func GetVendor(c *gin.Context) {
+    id := c.Param("id")
+    vendor, err := services.GetVendorByID(id)
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "Vendor not found"})
+        return
+    }
+    c.JSON(http.StatusOK, vendor)
+}
+
+// POST /api/vendors
+func CreateVendor(c *gin.Context) {
+    var vendor models.Vendor
+    if err := c.ShouldBindJSON(&vendor); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+    // Validate required fields
+    if vendor.Name == "" || vendor.Category == "" {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "name and category required"})
+        return
+    }
+    created, err := services.CreateVendor(&vendor)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+    c.JSON(http.StatusCreated, created)
+}
+```
+
+### Service Layer Pattern
+- Services contain business logic
+- Services call database directly (no handler → model direct calls)
+- Always return errors with context: `fmt.Errorf("failed to get vendor: %w", err)`
+- Generate UUIDs: `vendor.ID = uuid.New().String()`
+- Set timestamps: `vendor.CreatedAt = time.Now()`
+
+### Database Queries
+- **ALWAYS** use parameterized queries: `db.Query("SELECT * FROM vendors WHERE category = ?", category)`
+- **NEVER** use string concatenation for SQL
+- Use `defer rows.Close()` after `db.Query()`
+- Check `rows.Err()` after scanning all rows
+
+### Model Pattern
+```go
+type Vendor struct {
+    ID          string    `json:"id" db:"id"`
+    Name        string    `json:"name" db:"name" binding:"required"`
+    Category    string    `json:"category" db:"category" binding:"required"`
+    Email       *string   `json:"email,omitempty" db:"email"`  // Pointer for nullable
+    Status      string    `json:"status" db:"status"`
+    CreatedAt   time.Time `json:"created_at" db:"created_at"`
+    UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+}
+```
+
+---
+
+## React Frontend Patterns
+
+### React Query Hook Pattern
+```typescript
+// frontend/src/hooks/useVendors.ts
+export function useVendors() {
+  return useQuery({
+    queryKey: ['vendors'],
+    queryFn: vendorService.getAll,
+  });
+}
+
+export function useCreateVendor() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: vendorService.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+    },
+  });
+}
+```
+
+### Component Pattern
+```typescript
+// frontend/src/components/VendorCard.tsx
+interface VendorCardProps {
+  vendor: Vendor;
+  onUpdate?: (vendor: Vendor) => void;
+}
+
+export function VendorCard({ vendor, onUpdate }: VendorCardProps) {
+  const { mutate: updateVendor, isPending } = useUpdateVendor();
+  // Component implementation
+}
+```
+
+### API Service Pattern
+```typescript
+// frontend/src/services/vendors.ts
+export const vendorService = {
+  async getAll(): Promise<Vendor[]> {
+    const response = await axios.get('/vendors');
+    return response.data;
+  },
+  async create(vendor: Partial<Vendor>): Promise<Vendor> {
+    const response = await axios.post('/vendors', vendor);
+    return response.data;
+  },
+};
+```
+
+---
+
+## Database Schema Quick Reference
+
+### Key Tables
+- **vendors**: id, name, category, email, phone, website, city, state, starting_price (INTEGER cents), status, notes, ai_discovery_source, last_communication_at, last_communication_type
+- **tasks**: id, title, description, category, vendor_id (FK, nullable), due_date, timeline_phase, priority, status, estimated_cost (INTEGER cents), actual_cost
+- **reminders**: id, task_id (FK, nullable), vendor_id (FK, nullable), title, message, reminder_type, remind_at, recurrence, notification_channels (JSON), status
+- **budget_items**: id, category, vendor_id (FK, nullable), estimated_amount (INTEGER cents), actual_amount, paid_amount, payment_status, deposit_amount, deposit_due_date
+- **communications**: id, vendor_id (FK, required), direction, channel, subject, message_body, ai_generated (INTEGER 0/1), communication_type, communicated_at
+- **ai_searches**: id, query_text, query_type, search_parameters (JSON), image_url, results_count, vendors_created (JSON array), ai_model, tokens_used, cost (INTEGER cents)
+
+### ENUM Values
+- **vendor.category**: photographer, venue, caterer, florist, dj, videographer, planner, baker, designer, rentals
+- **vendor.status**: considering, booked, rejected
+- **task.status**: todo, in_progress, waiting, completed, cancelled
+- **task.priority**: low, medium, high, urgent
+- **task.timeline_phase**: 12+ months, 9-12 months, 6-9 months, 3-6 months, 1-3 months, 1 month, 1 week, day of
+- **communication.direction**: sent, received
+- **communication.channel**: email, phone, text, in_person, other
+
+**Full schema details:** See `SCHEMA.md`
+
+---
+
+## AI Integration Patterns
+
+### Claude API Tool Calling
+- Use structured outputs (tool calling) for vendor extraction
+- Map tool schema 1:1 to database schema (direct insert, no transformation)
+- Use prompt caching for vendor schema (90% cost reduction):
+  ```go
+  System: []anthropic.SystemMessage{
+      {
+          Type: "text",
+          Text: vendorSchemaDefinition,
+          CacheControl: &anthropic.CacheControl{Type: "ephemeral"},
+      },
+  }
+  ```
+
+### AI Endpoints
+- `POST /api/ai/search-text` - Text-based vendor search
+- `POST /api/ai/analyze-image` - Image analysis for inspiration
+- `POST /api/ai/generate-message` - AI-generated vendor emails
+
+---
+
+## API Design Standards
+
+### Endpoint Structure
+```
+GET    /api/vendors              # List all
+POST   /api/vendors              # Create
+GET    /api/vendors/:id          # Get by ID
+PUT    /api/vendors/:id          # Update
+DELETE /api/vendors/:id          # Delete
+```
+
+### HTTP Status Codes
+- **200 OK** - Successful GET/PUT
+- **201 Created** - Successful POST
+- **204 No Content** - Successful DELETE
+- **400 Bad Request** - Validation error
+- **404 Not Found** - Resource not found
+- **500 Internal Server Error** - Server error
+
+### Response Format
+```json
+// Success
+{
+  "id": "uuid",
+  "name": "Vendor Name",
+  "category": "photographer"
+}
+
+// Error
+{
+  "error": "Error message",
+  "code": "ERROR_CODE"
+}
+```
+
+---
+
+## Learning Documentation
+
+**MANDATORY:** Create learning docs for non-trivial tasks.
+
+### When to Create
+- Implementing new features
+- Debugging issues
+- Making architectural decisions
+- Integrating new tools/libraries
+- Database schema changes
+- AI integration work
+
+### Filename Convention
+`/learnings/YYYY-MM-DD-HH_MM_task-description.md`
+
+Get timestamp: `date '+%Y-%m-%d-%H_%M'`
+
+### Content Requirements
+- Original prompt at top
+- File:line references for code changes
+- Decision rationale (why, not just what)
+- Patterns and tools used
+- Next steps or follow-up tasks
+
+---
+
+## Security & Best Practices
+
+### Security
+- Never commit API keys (use .env files)
+- Validate all user input on backend
+- Use parameterized SQL queries
+- Set appropriate CORS headers
+- Rate limit AI API calls
+
+### Development
+- Test API endpoints with curl/Postman before frontend integration
+- Use React Query DevTools for debugging
+- Check SQLite: `sqlite3 wedding-planner.db "SELECT * FROM vendors;"`
+- Use Air for Go live reload: `air`
+
+### Environment Variables
+```bash
+# Backend (.env)
+DATABASE_PATH=./wedding-planner.db
+ANTHROPIC_API_KEY=sk-ant-...
+PORT=8080
+ALLOWED_ORIGINS=http://localhost:5173
+
+# Frontend (.env)
+VITE_API_URL=http://localhost:8080/api
+```
+
+---
+
+## Current Phase Context
+
+**Current Phase:** Phase 1 - Foundation (see `TODO.md` for details)
+
+**Focus Areas:**
+- Backend: Go module setup, SQLite configuration, vendor CRUD
+- Frontend: Vite setup, React Router, vendor list/detail pages
+- Database: Migration files for all tables
+
+**Next Steps:** See `TODO.md` for current task checklist
+
+---
+
+## References
+
+- **Code Patterns:** `PATTERNS.md` - Detailed examples for all patterns
+- **Database Schema:** `SCHEMA.md` - Complete ERD and field definitions
+- **Project Context:** `.claude/CLAUDE.md` - Full project documentation
+- **Progress Tracking:** `TODO.md` - Current phase and tasks
+
