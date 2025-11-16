@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import CustomDropdown from '../CustomDropdown';
+import ConfirmDialog from '../ConfirmDialog';
 import type { Vendor, VendorStatus } from '../../types/vendor';
 import type { Task } from '../../types/task';
 import type { Reminder } from '../../types/reminder';
@@ -10,6 +12,7 @@ interface VendorCardProps {
   isExpanded?: boolean;
   onSelectChange?: (selected: boolean) => void;
   onEdit?: (vendor: Vendor) => void;
+  onDelete?: (vendor: Vendor) => void;
   onExpand?: () => void;
   associatedTasks?: Task[];
   associatedReminders?: Reminder[];
@@ -21,6 +24,7 @@ export default function VendorCard({
   isExpanded = false,
   onSelectChange, 
   onEdit,
+  onDelete,
   onExpand,
   associatedTasks = [],
   associatedReminders = []
@@ -29,6 +33,7 @@ export default function VendorCard({
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notesValue, setNotesValue] = useState(vendor.notes || '');
   const [localStatus, setLocalStatus] = useState(vendor.status);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
   const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -192,7 +197,7 @@ export default function VendorCard({
 
         {/* Action buttons - appear on hover, same position as selection indicator */}
         <div className={`absolute top-4 right-4 flex gap-2 z-10 transition-all duration-300 ease-in-out ${
-          onEdit || onSelectChange 
+          onEdit || onSelectChange || onDelete
             ? 'opacity-0 group-hover:opacity-100 scale-0 group-hover:scale-100' 
             : 'opacity-0 scale-0'
         }`}>
@@ -207,6 +212,20 @@ export default function VendorCard({
             >
               <svg className="w-5 h-5 text-ivory transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDeleteDialog(true);
+              }}
+              className="p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-cinnabar/30 transition-all duration-200 ease-in-out hover:scale-110 active:scale-95"
+              title="Delete vendor"
+            >
+              <svg className="w-5 h-5 text-ivory transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </button>
           )}
@@ -244,17 +263,18 @@ export default function VendorCard({
         </div>
 
         {/* Status selector */}
-        <select
+        <CustomDropdown
+          options={[
+            { value: 'considering', label: 'Considering' },
+            { value: 'booked', label: 'Booked' },
+            { value: 'rejected', label: 'Rejected' },
+          ]}
           value={localStatus}
-          onChange={(e) => handleStatusChange(e.target.value as VendorStatus)}
-          onClick={(e) => e.stopPropagation()}
+          onChange={(value) => handleStatusChange(value as VendorStatus)}
           disabled={isPending}
-          className="w-full bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl px-4 py-2.5 text-ivory font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50 appearance-none transition-all duration-300 ease-in-out hover:bg-white/30 hover:border-white/40"
-        >
-          <option value="considering" className="text-graphite">Considering</option>
-          <option value="booked" className="text-graphite">Booked</option>
-          <option value="rejected" className="text-graphite">Rejected</option>
-        </select>
+          variant="transparent"
+          onClick={(e) => e.stopPropagation()}
+        />
       </div>
 
       {/* Card content section */}
@@ -440,6 +460,23 @@ export default function VendorCard({
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        title="Delete Vendor"
+        message={`Are you sure you want to delete "${vendor.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={() => {
+          if (onDelete) {
+            onDelete(vendor);
+          }
+          setShowDeleteDialog(false);
+        }}
+        onCancel={() => setShowDeleteDialog(false)}
+      />
     </div>
   );
 }

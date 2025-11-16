@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { useVendors, useCreateVendor, useUpdateVendor } from '../hooks/useVendors';
+import { useVendors, useCreateVendor, useUpdateVendor, useDeleteVendor } from '../hooks/useVendors';
 import { useTasks } from '../hooks/useTasks';
 import { useReminders } from '../hooks/useReminders';
 import VendorCard from '../components/vendors/VendorCard';
 import VendorComparison from '../components/vendors/VendorComparison';
+import CustomDropdown from '../components/CustomDropdown';
 import type { VendorCategory, VendorStatus, Vendor } from '../types/vendor';
 
 export default function VendorsPage() {
@@ -19,6 +20,7 @@ export default function VendorsPage() {
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const { mutate: createVendor } = useCreateVendor();
   const { mutate: updateVendor } = useUpdateVendor();
+  const { mutate: deleteVendor } = useDeleteVendor();
   const { data: tasks } = useTasks();
   const { data: reminders } = useReminders();
   const [formData, setFormData] = useState({
@@ -216,21 +218,20 @@ export default function VendorsPage() {
                 <label className="block text-sm font-medium text-graphite mb-1">
                   Category *
                 </label>
-                <select
-                  required
+                <CustomDropdown
+                  options={[
+                    { value: '', label: 'Select category...', disabled: true },
+                    ...categories.map((cat) => ({
+                      value: cat,
+                      label: cat.charAt(0).toUpperCase() + cat.slice(1),
+                    })),
+                  ]}
                   value={formData.category}
-                  onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value as VendorCategory })
+                  onChange={(value) =>
+                    setFormData({ ...formData, category: value as VendorCategory })
                   }
-                  className="w-full px-3 py-2 bg-ivory border border-old-gold rounded-lg text-graphite focus:outline-none focus:ring-2 focus:ring-forest-moss focus:border-forest-moss transition-all"
-                >
-                  <option value="">Select category...</option>
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Select category..."
+                />
               </div>
             </div>
 
@@ -320,22 +321,19 @@ export default function VendorsPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-graphite mb-1">
                   Status
                 </label>
-                <select
+                <CustomDropdown
+                  options={statuses.map((status) => ({
+                    value: status,
+                    label: status.charAt(0).toUpperCase() + status.slice(1),
+                  }))}
                   value={formData.status}
-                  onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value as VendorStatus })
+                  onChange={(value) =>
+                    setFormData({ ...formData, status: value as VendorStatus })
                   }
-                  className="w-full px-3 py-2 bg-white border border-rose-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-300 transition-all"
-                >
-                  {statuses.map((status) => (
-                    <option key={status} value={status}>
-                      {status.charAt(0).toUpperCase() + status.slice(1)}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
             </div>
 
@@ -381,30 +379,32 @@ export default function VendorsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 min-w-[200px] px-4 py-2 bg-ivory border border-old-gold rounded-lg text-graphite placeholder-forest-moss focus:outline-none focus:ring-2 focus:ring-forest-moss focus:border-forest-moss transition-all"
           />
-          <select
+          <CustomDropdown
+            options={[
+              { value: '', label: 'All Categories' },
+              ...categories.map((cat) => ({
+                value: cat,
+                label: cat.charAt(0).toUpperCase() + cat.slice(1),
+              })),
+            ]}
             value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-4 py-2 bg-ivory border border-old-gold rounded-lg text-graphite focus:outline-none focus:ring-2 focus:ring-forest-moss focus:border-forest-moss transition-all"
-          >
-            <option value="">All Categories</option>
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat.charAt(0).toUpperCase() + cat.slice(1)}
-              </option>
-            ))}
-          </select>
-          <select
+            onChange={setCategoryFilter}
+            placeholder="All Categories"
+            className="min-w-[180px]"
+          />
+          <CustomDropdown
+            options={[
+              { value: '', label: 'All Statuses' },
+              ...statuses.map((status) => ({
+                value: status,
+                label: status.charAt(0).toUpperCase() + status.slice(1),
+              })),
+            ]}
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 bg-ivory border border-old-gold rounded-lg text-graphite focus:outline-none focus:ring-2 focus:ring-forest-moss focus:border-forest-moss transition-all"
-          >
-            <option value="">All Statuses</option>
-            {statuses.map((status) => (
-              <option key={status} value={status}>
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-              </option>
-            ))}
-          </select>
+            onChange={setStatusFilter}
+            placeholder="All Statuses"
+            className="min-w-[160px]"
+          />
         </div>
 
         {selectedVendors.size > 0 && (
@@ -443,27 +443,30 @@ export default function VendorsPage() {
             const associatedReminders = reminders?.filter((reminder) => reminder.vendor_id === vendor.id) || [];
             
             return (
-              <VendorCard
-                key={vendor.id}
-                vendor={vendor}
-                isSelected={selectedVendors.has(vendor.id)}
-                isExpanded={expandedVendor === vendor.id}
-                associatedTasks={associatedTasks}
-                associatedReminders={associatedReminders}
-                onSelectChange={(selected) => {
-                  const newSelected = new Set(selectedVendors);
-                  if (selected) {
-                    newSelected.add(vendor.id);
-                  } else {
-                    newSelected.delete(vendor.id);
-                  }
-                  setSelectedVendors(newSelected);
-                }}
-                onEdit={handleEdit}
-                onExpand={() => {
-                  setExpandedVendor(expandedVendor === vendor.id ? null : vendor.id);
-                }}
-              />
+                    <VendorCard
+                      key={vendor.id}
+                      vendor={vendor}
+                      isSelected={selectedVendors.has(vendor.id)}
+                      isExpanded={expandedVendor === vendor.id}
+                      associatedTasks={associatedTasks}
+                      associatedReminders={associatedReminders}
+                      onSelectChange={(selected) => {
+                        const newSelected = new Set(selectedVendors);
+                        if (selected) {
+                          newSelected.add(vendor.id);
+                        } else {
+                          newSelected.delete(vendor.id);
+                        }
+                        setSelectedVendors(newSelected);
+                      }}
+                      onEdit={handleEdit}
+                      onDelete={(vendor) => {
+                        deleteVendor(vendor.id);
+                      }}
+                      onExpand={() => {
+                        setExpandedVendor(expandedVendor === vendor.id ? null : vendor.id);
+                      }}
+                    />
             );
           })}
         </div>
