@@ -99,10 +99,13 @@ wedding-planner/
 
 ## Database Schema
 
+### ID Format
+**CRITICAL:** All IDs use UUID v4 format stored as TEXT (not INTEGER). See `SCHEMA.md` for details.
+
 ### Key Tables
 
 **vendors** - Primary entity for vendor tracking
-- Fields: id, name, category (ENUM), email, phone, website, city, state, starting_price, status (ENUM), notes, ai_discovery_source, last_communication_at, last_communication_type, created_at, updated_at
+- Fields: id (UUID v4 TEXT), name, category (ENUM), email, phone, website, city, state, starting_price, status (ENUM), notes, ai_discovery_source, last_communication_at, last_communication_type, created_at, updated_at
 - Status values (ENUM): 'considering', 'booked', 'rejected'
 - Categories (ENUM): 'photographer', 'venue', 'caterer', 'florist', 'dj', 'videographer', 'planner', 'baker', 'designer', 'rentals'
 

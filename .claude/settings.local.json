@@ -3,7 +3,17 @@
     "allow": [
       "mcp__sequential-thinking__sequentialthinking",
       "WebSearch",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(go mod init:*)",
+      "Bash(go get:*)",
+      "Bash(go run:*)",
+      "Bash(curl:*)",
+      "Bash(npm create:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []
