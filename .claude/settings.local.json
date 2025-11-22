@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bin/weddingplanner thoughts init:*)",
+      "Bash(weddingplanner --help:*)",
+      "Bash(weddingplanner thoughts --help:*)",
+      "Bash(./bin/weddingplanner thoughts init:*)",
+      "Bash(git add:*)",
+      "Bash(./bin/weddingplanner:*)",
+      "Bash(test:*)",
+      "Bash(readlink:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "SlashCommand(/research_codebase)",
+      "Bash(./hack/spec_metadata.sh:*)",
+      "WebFetch(domain:docs.boundaryml.com)",
+      "Bash(go version:*)",
+      "Bash(go mod init:*)",
+      "Bash(go get:*)",
+      "Bash(make:*)",
+      "Bash(go install:*)",
+      "Bash(go env:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

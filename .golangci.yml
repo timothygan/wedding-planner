@@ -1,0 +1,68 @@
+run:
+  timeout: 5m
+  tests: true
+  build-tags: []
+
+linters-settings:
+  dupl:
+    threshold: 100
+  goconst:
+    min-len: 2
+    min-occurrences: 3
+  gocyclo:
+    min-complexity: 15
+  gocognit:
+    min-complexity: 20
+  mnd:
+    settings:
+      mnd:
+        checks:
+          - argument
+          - case
+          - condition
+          - operation
+          - return
+          - assign
+  depguard:
+    rules:
+      main:
+        deny:
+          - pkg: "github.com/timgan/wedding-planner/internal/infrastructure"
+            desc: "Domain layer cannot import infrastructure"
+        files:
+          - "**/internal/domain/**/*.go"
+  govet:
+    enable-all: true
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+linters:
+  enable:
+    - errcheck      # Check for unchecked errors
+    - gosimple      # Suggest code simplifications
+    - govet         # Reports suspicious constructs
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Advanced Go linter
+    - unused        # Check for unused constants, variables, functions
+    - gocyclo       # Cyclomatic complexity
+    - gocognit      # Cognitive complexity
+    - dupl          # Code clone detection
+    - goconst       # Repeated strings that could be constants
+    - mnd           # Magic number detection
+    - depguard      # Checks imports (enforces DDD layers)
+    - misspell      # Spelling errors
+    - unconvert     # Unnecessary type conversions
+    - unparam       # Unused function parameters
+    - stylecheck    # Style violations
+    - revive        # Fast, configurable, extensible linter
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - mnd        # Allow magic numbers in tests
+        - dupl       # Allow duplication in tests
+    - path: cmd/
+      linters:
+        - mnd        # Allow magic numbers in main

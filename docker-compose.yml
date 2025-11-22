@@ -1,0 +1,40 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: wedding-planner-db
+    environment:
+      POSTGRES_USER: weddingplanner
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: weddingplanner
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U weddingplanner"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: wedding-planner-app
+    environment:
+      DATABASE_URL: postgres://weddingplanner:devpassword@postgres:5432/weddingplanner?sslmode=disable
+      PORT: 8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+      - /app/tmp  # Exclude tmp directory
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: air
+
+volumes:
+  postgres_data:
